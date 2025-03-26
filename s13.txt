@@ -113,3 +113,171 @@ public class MainActivity extends AppCompatActivity {
     }
 }
 
+
+
+
+
+
+Slip 13
+Q2. Write an application to accept a teacher name from user and display the names of students along with subjects to whom they are teaching. Create table Student (sno , s_name,s_class,s_addr) Teacher (tno, t_name, qualification, experience) Student-Teacher has Many to Many relationship. [20 Marks]
+
+activity_main.xml
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/teacherNameInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter Teacher Name"
+        android:padding="8dp"
+        android:background="@android:drawable/editbox_background" />
+
+    <Button
+        android:id="@+id/searchButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Search"
+        android:backgroundTint="@android:color/holo_blue_light"
+        android:textColor="@android:color/white"
+        android:padding="10dp"
+        android:layout_marginTop="10dp" />
+
+    <ListView
+        android:id="@+id/studentListView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp" />
+</LinearLayout>
+
+MainActivity.java
+package com.example.studentteachertable;
+
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.util.ArrayList;
+
+public class MainActivity extends AppCompatActivity {
+
+    EditText teacherNameInput;
+    Button searchButton;
+    ListView studentListView;
+    DatabaseHelper dbHelper;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        teacherNameInput = findViewById(R.id.teacherNameInput);
+        searchButton = findViewById(R.id.searchButton);
+        studentListView = findViewById(R.id.studentListView);
+
+        dbHelper = new DatabaseHelper(this);
+        dbHelper.insertSampleData(); // Insert sample data for testing
+
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String teacherName = teacherNameInput.getText().toString().trim();
+                if (!teacherName.isEmpty()) {
+                    fetchStudents(teacherName);
+                } else {
+                    Toast.makeText(MainActivity.this, "Enter a teacher's name", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void fetchStudents(String teacherName) {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        ArrayList<String> studentList = new ArrayList<>();
+
+        String query = "SELECT s.s_name, st.subject FROM Student s " +
+                "JOIN Student_Teacher st ON s.sno = st.sno " +
+                "JOIN Teacher t ON t.tno = st.tno " +
+                "WHERE t.t_name = ?";
+
+        Cursor cursor = db.rawQuery(query, new String[]{teacherName});
+
+        if (cursor.moveToFirst()) {
+            do {
+                String student = "Student: " + cursor.getString(0) + " | Subject: " + cursor.getString(1);
+                studentList.add(student);
+            } while (cursor.moveToNext());
+        } else {
+            studentList.add("No students found for " + teacherName);
+        }
+        cursor.close();
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, studentList);
+        studentListView.setAdapter(adapter);
+    }
+}
+
+DatabaseHelper.java
+package com.example.studentteachertable;
+
+import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+public class DatabaseHelper extends SQLiteOpenHelper {
+
+    private static final String DATABASE_NAME = "SchoolDB";
+    private static final int DATABASE_VERSION = 1;
+
+    public DatabaseHelper(Context context) {
+        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS Student (sno INTEGER PRIMARY KEY, s_name TEXT, s_class TEXT, s_addr TEXT);");
+        db.execSQL("CREATE TABLE IF NOT EXISTS Teacher (tno INTEGER PRIMARY KEY, t_name TEXT, qualification TEXT, experience TEXT);");
+        db.execSQL("CREATE TABLE IF NOT EXISTS Student_Teacher (sno INTEGER, tno INTEGER, subject TEXT, " +
+                "FOREIGN KEY(sno) REFERENCES Student(sno), FOREIGN KEY(tno) REFERENCES Teacher(tno));");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        db.execSQL("DROP TABLE IF EXISTS Student_Teacher");
+        db.execSQL("DROP TABLE IF EXISTS Student");
+        db.execSQL("DROP TABLE IF EXISTS Teacher");
+        onCreate(db);
+    }
+
+    public void insertSampleData() {
+        SQLiteDatabase db = this.getWritableDatabase();
+
+        db.execSQL("INSERT OR IGNORE INTO Student VALUES (1, 'John Doe', '10', 'New York');");
+        db.execSQL("INSERT OR IGNORE INTO Student VALUES (2, 'Jane Smith', '9', 'Los Angeles');");
+        db.execSQL("INSERT OR IGNORE INTO Student VALUES (3, 'Mark Lee', '10', 'Chicago');");
+
+        db.execSQL("INSERT OR IGNORE INTO Teacher VALUES (1, 'Mr. Smith', 'MSc', '5 Years');");
+        db.execSQL("INSERT OR IGNORE INTO Teacher VALUES (2, 'Ms. Johnson', 'PhD', '10 Years');");
+
+        db.execSQL("INSERT OR IGNORE INTO Student_Teacher VALUES (1, 1, 'Mathematics');");
+        db.execSQL("INSERT OR IGNORE INTO Student_Teacher VALUES (2, 1, 'Science');");
+        db.execSQL("INSERT OR IGNORE INTO Student_Teacher VALUES (3, 2, 'English');");
+
+        db.close();
+    }
+}
+
+
+
